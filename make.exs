@@ -1,5 +1,7 @@
 defmodule Make do
-  @wx_header_path "wx/include/wx.hrl"
+  @wx_header_path  "wx/include/wx.hrl"
+  @gl_header_path  "wx/include/gl.hrl"
+  @glu_header_path  "wx/include/glu.hrl"
 
   @src_path "./src"
   @lib_path "./lib"
@@ -9,7 +11,9 @@ defmodule Make do
   @erl_path "./src/#{@erl_name}.erl"
   @erl_heading ["-module(#{@erl_name}).\n",
                 "-compile(export_all).\n\n",
-                "-include_lib(\"#{@wx_header_path}\").\n"]
+                "-include_lib(\"#{@wx_header_path}\").\n",
+                "-include_lib(\"#{@gl_header_path}\").\n",
+                "-include_lib(\"#{@glu_header_path}\").\n" ]
 
   @ex_path "./lib/wx_helper.ex"
   @ex_heading ["defmodule WxHelper do\n",
@@ -32,18 +36,51 @@ defmodule Make do
     clean_file(@erl_path)
     clean_file(@ex_path)
 
-    {records, defines} =  @wx_header_path
+    {wx_records, wx_defines} =  @wx_header_path
                           |> from_lib_file()
                           |> File.read!()
                           |> String.split("\n")
                           |> parse({[], []})
 
-    erl_functions = defines |> Enum.map(&make_erlang_function/1)
-    erl_contents = @erl_heading ++ erl_functions
+    {gl_records, gl_defines} =  @gl_header_path
+                          |> from_lib_file()
+                          |> File.read!()
+                          |> String.split("\n")
+                          |> parse({[], []})
 
-    ex_records = records |> Enum.map(&make_elixir_record/1)
-    ex_functions = defines |> Enum.map(&make_elixir_function/1)
-    ex_contents = @ex_heading ++ ex_records ++ ["\n"] ++ ex_functions ++ @ex_ending
+    {glu_records, glu_defines} =  @glu_header_path
+                          |> from_lib_file()
+                          |> File.read!()
+                          |> String.split("\n")
+                          |> parse({[], []})
+    
+    wx_erl_functions = wx_defines |> Enum.map(&make_erlang_function/1)
+    gl_erl_functions = gl_defines |> Enum.map(&make_erlang_function/1)
+    glu_erl_functions = glu_defines |> Enum.map(&make_erlang_function/1)
+    
+    erl_contents = @erl_heading 
+                   ++ wx_erl_functions 
+                   ++ gl_erl_functions 
+                   ++ glu_erl_functions
+
+    wx_ex_records = wx_records |> Enum.map(&(make_elixir_record(&1,@wx_header_path)))
+    wx_ex_functions = wx_defines |> Enum.map(&make_elixir_function/1)
+    
+    gl_ex_records = gl_records |> Enum.map(&(make_elixir_record(&1,@gl_header_path)))
+    gl_ex_functions = gl_defines |> Enum.map(&make_elixir_function/1)
+    
+    glu_ex_records = glu_records |> Enum.map(&(make_elixir_record(&1,@glu_header_path)))
+    glu_ex_functions = glu_defines |> Enum.map(&make_elixir_function/1)
+    
+    ex_contents = @ex_heading 
+                  ++ wx_ex_records 
+                  ++ gl_ex_records 
+                  ++ glu_ex_records 
+                  ++ ["\n"] 
+                  ++ wx_ex_functions 
+                  ++ gl_ex_functions 
+                  ++ glu_ex_functions 
+                  ++ @ex_ending
 
     erl_file_handle = File.stream!(@erl_path)
     ex_file_handle = File.stream!(@ex_path)
@@ -87,6 +124,10 @@ defmodule Make do
                                 [{"wxk" <> rest, "WXK" <> rest} | defines]
                               "WX" <> rest ->
                                 [{"wx" <> rest, "WX" <> rest} | defines]
+                              "GLU" <> rest ->
+                                [{"glu" <> rest, "GLU" <> rest} | defines]
+                              "GL" <> rest ->
+                                [{"gl" <> rest, "GL" <> rest} | defines]
                               rest ->
                                 [{rest, rest} | defines]
                             end
@@ -97,8 +138,8 @@ defmodule Make do
     parse(lines, values)
   end
 
-  defp make_elixir_record(record) do
-    "  Record.defrecord :#{record}, Record.extract(:#{record}, from_lib: \"#{@wx_header_path}\")\n"
+  defp make_elixir_record(record,header_path) do
+    "  Record.defrecord :#{record}, Record.extract(:#{record}, from_lib: \"#{header_path}\")\n"
   end
 
   defp make_elixir_function({function, _macro}) do
