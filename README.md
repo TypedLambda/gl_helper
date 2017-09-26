@@ -1,13 +1,16 @@
 # WxHelper
 
-A helper module for using wxErlang in Elixir.
+A helper module for using wxErlangs OpenGL binding in Elixir.
+based on [rtvu/wx_helper](https://github.com/rtvu/wx_helper).
+
+It creates bindings for the GL and GLU erlang headers.
 
 ## Installation
 
-To use WxHelper in your Mix projects, first add WxHelper as a dependency:
+To use GlHelper in your Mix projects, first add GlHelper as a dependency:
 
 ```elixir
 def deps do
-  [{:wx_helper, git: "https://github.com/rtvu/wx_helper.git"}]
+  [{:gl_helper, git: "https://github.com/Typedlambda/gl_helper.git"}]
 end
 ```

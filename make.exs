@@ -1,22 +1,20 @@
 defmodule Make do
-  @wx_header_path  "wx/include/wx.hrl"
   @gl_header_path  "wx/include/gl.hrl"
   @glu_header_path  "wx/include/glu.hrl"
 
   @src_path "./src"
   @lib_path "./lib"
 
-  @erl_name "wx_elixir_helper"
+  @erl_name "gl_elixir_helper"
   @erl_atom ":#{@erl_name}"
   @erl_path "./src/#{@erl_name}.erl"
   @erl_heading ["-module(#{@erl_name}).\n",
                 "-compile(export_all).\n\n",
-                "-include_lib(\"#{@wx_header_path}\").\n",
                 "-include_lib(\"#{@gl_header_path}\").\n",
                 "-include_lib(\"#{@glu_header_path}\").\n" ]
 
-  @ex_path "./lib/wx_helper.ex"
-  @ex_heading ["defmodule WxHelper do\n",
+  @ex_path "./lib/gl_helper.ex"
+  @ex_heading ["defmodule GlHelper do\n",
                "@moduledoc false\n\n",
                "  require Record\n\n"]
   @ex_ending ["end\n"]
@@ -36,12 +34,6 @@ defmodule Make do
     clean_file(@erl_path)
     clean_file(@ex_path)
 
-    {wx_records, wx_defines} =  @wx_header_path
-                          |> from_lib_file()
-                          |> File.read!()
-                          |> String.split("\n")
-                          |> parse({[], []})
-
     {gl_records, gl_defines} =  @gl_header_path
                           |> from_lib_file()
                           |> File.read!()
@@ -54,17 +46,13 @@ defmodule Make do
                           |> String.split("\n")
                           |> parse({[], []})
     
-    wx_erl_functions = wx_defines |> Enum.map(&make_erlang_function/1)
     gl_erl_functions = gl_defines |> Enum.map(&make_erlang_function/1)
     glu_erl_functions = glu_defines |> Enum.map(&make_erlang_function/1)
     
     erl_contents = @erl_heading 
-                   ++ wx_erl_functions 
                    ++ gl_erl_functions 
                    ++ glu_erl_functions
 
-    wx_ex_records = wx_records |> Enum.map(&(make_elixir_record(&1,@wx_header_path)))
-    wx_ex_functions = wx_defines |> Enum.map(&make_elixir_function/1)
     
     gl_ex_records = gl_records |> Enum.map(&(make_elixir_record(&1,@gl_header_path)))
     gl_ex_functions = gl_defines |> Enum.map(&make_elixir_function/1)
@@ -73,11 +61,9 @@ defmodule Make do
     glu_ex_functions = glu_defines |> Enum.map(&make_elixir_function/1)
     
     ex_contents = @ex_heading 
-                  ++ wx_ex_records 
                   ++ gl_ex_records 
                   ++ glu_ex_records 
                   ++ ["\n"] 
-                  ++ wx_ex_functions 
                   ++ gl_ex_functions 
                   ++ glu_ex_functions 
                   ++ @ex_ending
@@ -118,12 +104,6 @@ defmodule Make do
                 {nil, match = %{}} ->
                   define = match["define"]
                   defines = case define do
-                              "wxEMPTY_PARAMETER_VALUE" ->
-                                defines
-                              "WXK" <> rest ->
-                                [{"wxk" <> rest, "WXK" <> rest} | defines]
-                              "WX" <> rest ->
-                                [{"wx" <> rest, "WX" <> rest} | defines]
                               "GLU" <> rest ->
                                 [{"glu" <> rest, "GLU" <> rest} | defines]
                               "GL" <> rest ->
